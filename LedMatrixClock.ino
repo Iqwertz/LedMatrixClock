@@ -10,7 +10,7 @@ const bool invert = true;
 const bool rightstart = true;
 const int Display = 6;
 const int ldrPin = A1;
-const byte Rotate = 3; //Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
+const byte Rotate = 0; //Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
 const int MaxLight = 700;
 const int MinLight = 350;
 const byte MaxBrightness = 155;
@@ -23,19 +23,21 @@ const byte HourColor[3] = {200, 280, 16};
 const byte MinuteColor[3] = {77, 255, 2550};
 const byte SecondColor[3] = {0, 255, 0};
 
-const byte N1 [7][2]={{4,1},{4,2},{4,3},{4,4},{4,5},{4,6},{4,7}};
-const byte N2 [14][2]={{2,6},{3,7},{4,7},{5,7},{6,6},{6,5},{5,4},{4,3},{3,2},{2,1},{3,1},{4,1},{5,1},{6,1}};
-const byte N3 [14][2]={{2,6},{3,7},{4,7},{5,7},{6,6},{6,5},{5,4},{4,4},{6,3},{6,2},{5,1},{4,1},{3,1},{2,2}};
-const byte N4 [11][2]={{5,7},{4,6},{3,5},{2,4},{2,3},{3,3},{4,3},{5,4},{5,3},{5,2},{5,1}};
-const byte N5 [17][2]={{6,7},{5,7},{4,7},{3,7},{2,7},{2,6},{2,5},{2,4},{3,4},{4,4},{5,4},{6,3},{6,2},{5,1},{4,1},{3,1},{2,2}};
-const byte N6 [14][2]={{5,7},{4,6},{3,5},{2,4},{2,3},{2,2},{3,1},{4,1},{5,1},{6,2},{6,3},{5,4},{4,4},{3,4}};
-const byte N7 [11][2]={{6,7},{5,7},{4,7},{3,7},{2,7},{6,6},{5,5},{4,4},{4,3},{3,2},{3,1}};
-const byte N8 [17][2]={{3,7},{4,7},{5,7},{6,6},{6,5},{5,4},{4,4},{3,4},{2,3},{2,2},{3,1},{4,1},{5,1},{6,2},{6,3},{2,5},{2,6}};
-const byte N8 [17][2]={{3,7},{4,7},{5,7},{6,6},{6,5},{5,4},{4,4},{3,4},{2,3},{2,2},{3,1},{4,1},{5,1},{6,2},{6,3},{2,5},{2,6}};
+const byte N0 [17][2] = {{3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 5}, {2, 4}, {6, 4}, {2, 3}, {2, 2}, {3, 1}, {4, 1}, {5, 1}, {6, 2}, {6, 3}, {2, 5}, {2, 6}};
+const byte N1 [7][2]  = {{4, 1}, {4, 2}, {4, 3}, {4, 4}, {4, 5}, {4, 6}, {4, 7}};
+const byte N2 [14][2] = {{2, 6}, {3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 5}, {5, 4}, {4, 3}, {3, 2}, {2, 1}, {3, 1}, {4, 1}, {5, 1}, {6, 1}};
+const byte N3 [14][2] = {{2, 6}, {3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 5}, {5, 4}, {4, 4}, {6, 3}, {6, 2}, {5, 1}, {4, 1}, {3, 1}, {2, 2}};
+const byte N4 [11][2] = {{5, 7}, {4, 6}, {3, 5}, {2, 4}, {2, 3}, {3, 3}, {4, 3}, {5, 4}, {5, 3}, {5, 2}, {5, 1}};
+const byte N5 [17][2] = {{6, 7}, {5, 7}, {4, 7}, {3, 7}, {2, 7}, {2, 6}, {2, 5}, {2, 4}, {3, 4}, {4, 4}, {5, 4}, {6, 3}, {6, 2}, {5, 1}, {4, 1}, {3, 1}, {2, 2}};
+const byte N6 [14][2] = {{5, 7}, {4, 6}, {3, 5}, {2, 4}, {2, 3}, {2, 2}, {3, 1}, {4, 1}, {5, 1}, {6, 2}, {6, 3}, {5, 4}, {4, 4}, {3, 4}};
+const byte N7 [11][2] = {{6, 7}, {5, 7}, {4, 7}, {3, 7}, {2, 7}, {6, 6}, {5, 5}, {4, 4}, {4, 3}, {3, 2}, {3, 1}};
+const byte N8 [17][2] = {{3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 5}, {5, 4}, {4, 4}, {3, 4}, {2, 3}, {2, 2}, {3, 1}, {4, 1}, {5, 1}, {6, 2}, {6, 3}, {2, 5}, {2, 6}};
+const byte N9 [14][2] = {{3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 5}, {6, 4}, {5, 4}, {4, 4}, {3, 4}, {5, 3}, {4, 2}, {3, 1}, {2, 5}, {2, 6}};
 
 byte Seconds = 0;
 int Milliseconds = 0;
 int LastSecond = 0;
+byte LastMinute = 0;
 long LastMilliseconds = 0;
 bool Status = true;
 byte Mode = 1; // 0 = Clock / 1 = Numbers / 2 = off
@@ -51,8 +53,6 @@ void setup() {
   Matrix.setBrightness(MaxBrightness);
   Matrix.clear();
   Matrix.show();
-
-  DrawOutline();
 
   LastMilliseconds = millis();
 }
@@ -94,14 +94,78 @@ void loop() {
         DrawPixel(0, 1, true, 255, 25, 16);
         Matrix.show();
       }
+    } else if (Mode == 1) {
+      if (now.minute() != LastMinute) {
+        Matrix.clear();
+        LastMinute = now.minute();
+        DrawNumbers(floor(now.hour()/10), now.hour()%10, floor(now.minute()/10), now.minute()%10);
+        Matrix.show();
+      }
     }
-  } else if (Mode == 1) {
-
   }
 }
 
-void DrawNumbers(int z1, int z2, int z3, int z4){
-  
+void DrawNumbers(int z1, int z2, int z3, int z4) {
+  SelectNumber(z1, 0);
+  SelectNumber(z2, 1);
+  SelectNumber(z3, 2);
+  SelectNumber(z4, 3);
+}
+
+void SelectNumber(int n, byte mode) {
+  switch (n) {
+    case 0:
+      SetNumber(N0, sizeof(N0) / sizeof(N0[0]), mode);
+      break;
+    case 1:
+      SetNumber(N1, sizeof(N1) / sizeof(N1[0]), mode);
+      break;
+    case 2:
+      SetNumber(N2, sizeof(N2) / sizeof(N2[0]), mode);
+      break;
+    case 3:
+      SetNumber(N3, sizeof(N3) / sizeof(N3[0]), mode);
+      break;
+    case 4:
+      SetNumber(N4, sizeof(N4) / sizeof(N4[0]), mode);
+      break;
+    case 5:
+      SetNumber(N5, sizeof(N5) / sizeof(N5[0]), mode);
+      break;
+    case 6:
+      SetNumber(N6, sizeof(N6) / sizeof(N6[0]), mode);
+      break;
+    case 7:
+      SetNumber(N7, sizeof(N7) / sizeof(N7[0]), mode);
+      break;
+    case 8:
+      SetNumber(N8, sizeof(N8) / sizeof(N8[0]), mode);
+      break;
+    case 9:
+      SetNumber(N9, sizeof(N9) / sizeof(N9[0]), mode);
+      break;
+  }
+}
+
+void SetNumber(byte arr[][2], byte Size, byte M) {
+  for (int i = 0; i < Size; i++) {
+    switch (M) {
+      case 0:
+        DrawPixel(arr[i][0] - Breite / 2 + 1, arr[i][1] + 1, true, 255, 255, 255);
+        break;
+      case 1:
+        DrawPixel(arr[i][0], arr[i][1] + 1, true, 255, 255, 255);
+        break;
+      case 2:
+        DrawPixel(arr[i][0] - Breite / 2 + 1, arr[i][1] - Hohe / 2, true, 255, 255, 255);
+        break;
+      case 3:
+        DrawPixel(arr[i][0], arr[i][1] - Hohe / 2, true, 255, 255, 255);
+        break;
+
+    }
+
+  }
 }
 
 void SetBrightness() {
