@@ -9,7 +9,11 @@ const int Breite = 16;
 const bool invert = true;
 const bool rightstart = true;
 const int Display = 6;
+const int ldrPin = A1;
 const byte Rotate = 3; //Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
+const int MaxLight = 700;
+const int MinLight = 350;
+const byte MaxBrightness = 155;
 
 const byte ClockOutlineColor[3] = {77, 255, 160};
 const byte QuarterOutlineLength = 11;
@@ -19,10 +23,22 @@ const byte HourColor[3] = {200, 280, 16};
 const byte MinuteColor[3] = {77, 255, 2550};
 const byte SecondColor[3] = {0, 255, 0};
 
+const byte N1 [7][2]={{4,1},{4,2},{4,3},{4,4},{4,5},{4,6},{4,7}};
+const byte N2 [14][2]={{2,6},{3,7},{4,7},{5,7},{6,6},{6,5},{5,4},{4,3},{3,2},{2,1},{3,1},{4,1},{5,1},{6,1}};
+const byte N3 [14][2]={{2,6},{3,7},{4,7},{5,7},{6,6},{6,5},{5,4},{4,4},{6,3},{6,2},{5,1},{4,1},{3,1},{2,2}};
+const byte N4 [11][2]={{5,7},{4,6},{3,5},{2,4},{2,3},{3,3},{4,3},{5,4},{5,3},{5,2},{5,1}};
+const byte N5 [17][2]={{6,7},{5,7},{4,7},{3,7},{2,7},{2,6},{2,5},{2,4},{3,4},{4,4},{5,4},{6,3},{6,2},{5,1},{4,1},{3,1},{2,2}};
+const byte N6 [14][2]={{5,7},{4,6},{3,5},{2,4},{2,3},{2,2},{3,1},{4,1},{5,1},{6,2},{6,3},{5,4},{4,4},{3,4}};
+const byte N7 [11][2]={{6,7},{5,7},{4,7},{3,7},{2,7},{6,6},{5,5},{4,4},{4,3},{3,2},{3,1}};
+const byte N8 [17][2]={{3,7},{4,7},{5,7},{6,6},{6,5},{5,4},{4,4},{3,4},{2,3},{2,2},{3,1},{4,1},{5,1},{6,2},{6,3},{2,5},{2,6}};
+const byte N8 [17][2]={{3,7},{4,7},{5,7},{6,6},{6,5},{5,4},{4,4},{3,4},{2,3},{2,2},{3,1},{4,1},{5,1},{6,2},{6,3},{2,5},{2,6}};
+
 byte Seconds = 0;
 int Milliseconds = 0;
 int LastSecond = 0;
 long LastMilliseconds = 0;
+bool Status = true;
+byte Mode = 1; // 0 = Clock / 1 = Numbers / 2 = off
 
 #define NUMPIXELS Hohe*Breite
 Adafruit_NeoPixel Matrix(NUMPIXELS, Display, NEO_GRB + NEO_KHZ800);
@@ -32,7 +48,7 @@ void setup() {
   Wire.begin();
 
   Matrix.begin();
-  Matrix.setBrightness(100);
+  Matrix.setBrightness(MaxBrightness);
   Matrix.clear();
   Matrix.show();
 
@@ -42,32 +58,63 @@ void setup() {
 }
 
 void loop() {
-  Matrix.clear();
-  DateTime now = RTC.now();
+  SetBrightness();
 
-  if (LastSecond != now.second()) {
-    Milliseconds = 0;
-    LastSecond = now.second();
-  
+  if (Status) {
+    DateTime now = RTC.now();
 
-  if (millis() - LastMilliseconds >= 100) {
-    Milliseconds += 100;
-    LastMilliseconds = millis();
+    if (Mode == 0) {
+      if (now.second() - LastSecond >= 1) {
+
+        Milliseconds = 0;
+        LastSecond = now.second();
+
+        if (LastSecond == 60) {
+          LastSecond = 0;
+        } else if (LastSecond == 59) {
+          LastSecond = -1;
+        }
+      }
+
+      if (millis() - LastMilliseconds >= 100) {
+        Matrix.clear();
+
+        Milliseconds += 100;
+        LastMilliseconds = millis();
+        DrawSecond(now.second(), Milliseconds);
+
+
+        DrawMinute(now.minute());
+        DrawHour(now.hour());
+        DrawOutline();
+
+        DrawPixel(0, 0, true, 255, 25, 16);
+        DrawPixel(1, 0, true, 255, 25, 16);
+        DrawPixel(1, 1, true, 255, 25, 16);
+        DrawPixel(0, 1, true, 255, 25, 16);
+        Matrix.show();
+      }
+    }
+  } else if (Mode == 1) {
+
   }
-
-  DrawSecond(now.second(), Milliseconds);
-  DrawMinute(now.minute());
-  DrawHour(now.hour());
-  DrawOutline();
-
-  DrawPixel(0, 0, true, 255, 25, 16);
-  DrawPixel(1, 0, true, 255, 25, 16);
-  DrawPixel(1, 1, true, 255, 25, 16);
-  DrawPixel(0, 1, true, 255, 25, 16);
-  Matrix.show();
-  delay(100);
 }
 
+void DrawNumbers(int z1, int z2, int z3, int z4){
+  
+}
+
+void SetBrightness() {
+  int ldrStatus = analogRead(ldrPin);
+  if (ldrStatus <= MinLight) {
+    Matrix.clear();
+    Matrix.show();
+    Status = false;
+  } else {
+    Status = true;
+    Matrix.setBrightness(map(ldrStatus, MinLight, MaxLight, 0, MaxBrightness));
+  }
+}
 
 void DrawOutline() {
   for (int i = 0; i < QuarterOutlineLength; i++) {
@@ -79,12 +126,15 @@ void DrawOutline() {
 }
 
 void DrawSecond(byte s, int ms) {
-  s++;
-  DrawFinger(map(s * 6, 0, 360, 360, 0), Breite / 2 - 2, AdjustBrightness(SecondColor[0], ms), AdjustBrightness(SecondColor[1], ms), AdjustBrightness(SecondColor[2], ms));
-  s++;
-  DrawFinger(map(s * 6, 0, 360, 360, 0), Breite / 2 - 2, AdjustBrightness(SecondColor[0], ms), AdjustBrightness(SecondColor[1], ms), AdjustBrightness(SecondColor[2], ms));
-  s -= 2;
-  DrawFinger(map(s * 6, 0, 360, 360, 0), Breite / 2 - 2, AdjustBrightness(SecondColor[0], 1000 - ms), AdjustBrightness(SecondColor[1], 1000 - ms), AdjustBrightness(SecondColor[2], 1000 - ms));
+  /* s++;
+    DrawFinger(map(s * 6, 0, 360, 360, 0), Breite / 2 - 2, AdjustBrightness(SecondColor[0], ms), AdjustBrightness(SecondColor[1], ms), AdjustBrightness(SecondColor[2], ms));
+    s++;
+    DrawFinger(map(s * 6, 0, 360, 360, 0), Breite / 2 - 2, AdjustBrightness(SecondColor[0], ms), AdjustBrightness(SecondColor[1], ms), AdjustBrightness(SecondColor[2], ms));
+    s -= 2;
+    DrawFinger(map(s * 6, 0, 360, 360, 0), Breite / 2 - 2, AdjustBrightness(SecondColor[0], 2000 - ms), AdjustBrightness(SecondColor[1], 2000 - ms), AdjustBrightness(SecondColor[2], 2000 - ms));
+  */
+
+  DrawFinger(map(s * 6, 0, 360, 360, 0), Breite / 2 - 2, SecondColor[0], SecondColor[1], SecondColor[2]);
 }
 
 void DrawMinute(byte m) {
@@ -98,8 +148,8 @@ void DrawHour(byte h) {
   DrawFinger(map(h * 30, 0, 360, 360, 0), Breite / 2 - 4, HourColor[0], HourColor[1], HourColor[2]);
 }
 
-byte AdjustBrightness(byte v, int brightness) { //Full Brightness = 1000
-  return round(v * (brightness / 1000.0));
+byte AdjustBrightness(byte v, int brightness) { //Full Brightness = 2000
+  return round(v * (brightness / 2000.0));
 }
 void DrawFinger(int angle, int rad, byte r, byte g, byte b) {
   if (angle < 6) {
@@ -159,20 +209,20 @@ int MatrixConvert(int x, int y, bool center) {
     int a = x;
     x = y;
     y = a;
-    
+
     a = x;
     x = y;
     y = a;
-    
+
     a = x;
     x = y;
     y = a;
-    
+
   } else if (Rotate == 2) {
     int a = x;
     x = y;
     y = a;
-    
+
     a = x;
     x = y;
     y = a;
