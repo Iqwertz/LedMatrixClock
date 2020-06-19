@@ -23,6 +23,10 @@ const byte HourColor[3] = {200, 280, 16};
 const byte MinuteColor[3] = {77, 255, 2550};
 const byte SecondColor[3] = {0, 255, 0};
 
+const byte NumbersSecondColor[3] = {0, 200, 100};
+const byte NumbersMinuteColor[3] = {255, 255, 255};
+const byte NumbersHourColor[3] = {255, 255, 255};
+
 const byte N0 [17][2] = {{3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 5}, {2, 4}, {6, 4}, {2, 3}, {2, 2}, {3, 1}, {4, 1}, {5, 1}, {6, 2}, {6, 3}, {2, 5}, {2, 6}};
 const byte N1 [7][2]  = {{4, 1}, {4, 2}, {4, 3}, {4, 4}, {4, 5}, {4, 6}, {4, 7}};
 const byte N2 [14][2] = {{2, 6}, {3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 5}, {5, 4}, {4, 3}, {3, 2}, {2, 1}, {3, 1}, {4, 1}, {5, 1}, {6, 1}};
@@ -35,7 +39,7 @@ const byte N8 [17][2] = {{3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 5}, {5, 4}, {4, 4},
 const byte N9 [14][2] = {{3, 7}, {4, 7}, {5, 7}, {6, 6}, {6, 5}, {6, 4}, {5, 4}, {4, 4}, {3, 4}, {5, 3}, {4, 2}, {3, 1}, {2, 5}, {2, 6}};
 
 byte Seconds = 0;
-int Milliseconds = 0;
+long Milliseconds = 0;
 int LastSecond = 0;
 byte LastMinute = 0;
 long LastMilliseconds = 0;
@@ -46,7 +50,7 @@ byte Mode = 1; // 0 = Clock / 1 = Numbers / 2 = off
 Adafruit_NeoPixel Matrix(NUMPIXELS, Display, NEO_GRB + NEO_KHZ800);
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Wire.begin();
 
   Matrix.begin();
@@ -78,7 +82,6 @@ void loop() {
 
       if (millis() - LastMilliseconds >= 100) {
         Matrix.clear();
-
         Milliseconds += 100;
         LastMilliseconds = millis();
         DrawSecond(now.second(), Milliseconds);
@@ -95,13 +98,43 @@ void loop() {
         Matrix.show();
       }
     } else if (Mode == 1) {
-      if (now.minute() != LastMinute) {
+      if (millis() - LastMilliseconds >= 100) {
         Matrix.clear();
-        LastMinute = now.minute();
-        DrawNumbers(floor(now.hour()/10), now.hour()%10, floor(now.minute()/10), now.minute()%10);
+        LastMilliseconds = millis();
+        Milliseconds += 100;
+        if (Milliseconds >= 60000) {
+          Milliseconds = 0;
+        }
+        if(LastMinute!=now.minute()){
+          LastMinute=now.minute();
+          Milliseconds = 0;
+        }
+        DrawRectSecond(Milliseconds);
+        DrawNumbers(floor(now.hour() / 10), now.hour() % 10, floor(now.minute() / 10), now.minute() % 10);
         Matrix.show();
       }
     }
+  }
+}
+
+void DrawRectSecond(long ms) {
+  ms = round(ms * 1.33334);
+  int s = floor(ms / 10000);
+  for (int i = 1; i <= s; i++) {
+    DrawQuad(i, NumbersSecondColor[0], NumbersSecondColor[1], NumbersSecondColor[2]);
+  }
+  int Rest = ms%10000;
+  DrawQuad(s + 1, AdjustBrightness(NumbersSecondColor[0], Rest, 10000), AdjustBrightness(NumbersSecondColor[1], Rest, 10000), AdjustBrightness(NumbersSecondColor[2], Rest, 10000));
+}
+
+void DrawQuad(byte dist, byte r, byte g, byte b) {
+  int px, py;
+  px = py = dist;
+  for (int i = 0; i < dist * 2; i++) {
+    DrawPixel(px - i, py, true, r, g, b);
+    DrawPixel(px, py - i, true, r, g, b);
+    DrawPixel(px * -1 + i + 1, py * -1 + 1, true, r, g, b);
+    DrawPixel(px * -1 + 1, py * -1 + i + 1, true, r, g, b);
   }
 }
 
@@ -151,16 +184,16 @@ void SetNumber(byte arr[][2], byte Size, byte M) {
   for (int i = 0; i < Size; i++) {
     switch (M) {
       case 0:
-        DrawPixel(arr[i][0] - Breite / 2 + 1, arr[i][1] + 1, true, 255, 255, 255);
+        DrawPixel(arr[i][0] - Breite / 2 + 1, arr[i][1] + 1, true, NumbersHourColor[0], NumbersHourColor[1], NumbersHourColor[2]);
         break;
       case 1:
-        DrawPixel(arr[i][0], arr[i][1] + 1, true, 255, 255, 255);
+        DrawPixel(arr[i][0], arr[i][1] + 1, true, NumbersHourColor[0], NumbersHourColor[1], NumbersHourColor[2]);
         break;
       case 2:
-        DrawPixel(arr[i][0] - Breite / 2 + 1, arr[i][1] - Hohe / 2, true, 255, 255, 255);
+        DrawPixel(arr[i][0] - Breite / 2 + 1, arr[i][1] - Hohe / 2, true, NumbersMinuteColor[0], NumbersMinuteColor[1], NumbersMinuteColor[2]);
         break;
       case 3:
-        DrawPixel(arr[i][0], arr[i][1] - Hohe / 2, true, 255, 255, 255);
+        DrawPixel(arr[i][0], arr[i][1] - Hohe / 2, true, NumbersMinuteColor[0], NumbersMinuteColor[1], NumbersMinuteColor[2]);
         break;
 
     }
@@ -212,8 +245,8 @@ void DrawHour(byte h) {
   DrawFinger(map(h * 30, 0, 360, 360, 0), Breite / 2 - 4, HourColor[0], HourColor[1], HourColor[2]);
 }
 
-byte AdjustBrightness(byte v, int brightness) { //Full Brightness = 2000
-  return round(v * (brightness / 2000.0));
+byte AdjustBrightness(byte v, int brightness, float MaxB) {
+  return round(v * (brightness / MaxB));
 }
 void DrawFinger(int angle, int rad, byte r, byte g, byte b) {
   if (angle < 6) {
