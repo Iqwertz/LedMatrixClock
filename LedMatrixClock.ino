@@ -10,7 +10,7 @@ const bool invert = true;
 const bool rightstart = true;
 const int Display = 6;
 const int ldrPin = A1;
-const byte Rotate = 0; //Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
+byte Rotate = 0; //Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
 const int MaxLight = 700;
 const int MinLight = 350;
 const byte MaxBrightness = 155;
@@ -46,6 +46,16 @@ long LastMilliseconds = 0;
 bool Status = true;
 byte Mode = 1; // 0 = Clock / 1 = Numbers / 2 = off
 
+/////////////////Audio Settings///////////////////////
+const int ThresholdDiffrence = 5;
+const int ClappingIntervall = 1500;
+const int MeasuringIntervall = 10;
+
+int Spikes = 0;
+int AverageSound = 0;
+long FirstSpikeMillis = 0;
+long LastSound = 0;
+
 #define NUMPIXELS Hohe*Breite
 Adafruit_NeoPixel Matrix(NUMPIXELS, Display, NEO_GRB + NEO_KHZ800);
 
@@ -59,6 +69,9 @@ void setup() {
   Matrix.show();
 
   LastMilliseconds = millis();
+  LastSound = millis();
+
+  GetAverage(10);
 }
 
 void loop() {
@@ -66,10 +79,10 @@ void loop() {
 
   if (Status) {
     DateTime now = RTC.now();
-
+    Sound();
     if (Mode == 0) {
       if (now.second() - LastSecond >= 1) {
-
+        Rotate = 3;
         Milliseconds = 0;
         LastSecond = now.second();
 
@@ -99,14 +112,15 @@ void loop() {
       }
     } else if (Mode == 1) {
       if (millis() - LastMilliseconds >= 100) {
+        Rotate = 0;
         Matrix.clear();
         LastMilliseconds = millis();
         Milliseconds += 100;
         if (Milliseconds >= 60000) {
           Milliseconds = 0;
         }
-        if(LastMinute!=now.minute()){
-          LastMinute=now.minute();
+        if (LastMinute != now.minute()) {
+          LastMinute = now.minute();
           Milliseconds = 0;
         }
         DrawRectSecond(Milliseconds);
@@ -117,13 +131,43 @@ void loop() {
   }
 }
 
+void Sound() {
+  if (millis() - LastSound >= MeasuringIntervall) {
+    LastSound = millis();
+    int ReadValue = analogRead(A2);
+    Serial.println(ReadValue);
+    if ( AverageSound - ReadValue >= ThresholdDiffrence) {
+      Spikes++;
+    }
+    if (Spikes == 1) {
+      FirstSpikeMillis = millis();
+      //Serial.println("SPIKE");
+    }
+
+    if (millis() - FirstSpikeMillis >= ClappingIntervall  && Spikes >= 1) {
+      if (Spikes >= 1 && Spikes <= 4) {
+        Mode++;
+        Serial.println(0);
+        if (Mode == 3) {
+          Mode = 0;
+        } else if (Mode == 2) {
+          Matrix.clear();
+          Matrix.show();
+        }
+      }
+      //Serial.println(Spikes);
+      Spikes = 0;
+    }
+  }
+}
+
 void DrawRectSecond(long ms) {
   ms = round(ms * 1.33334);
   int s = floor(ms / 10000);
   for (int i = 1; i <= s; i++) {
     DrawQuad(i, NumbersSecondColor[0], NumbersSecondColor[1], NumbersSecondColor[2]);
   }
-  int Rest = ms%10000;
+  int Rest = ms % 10000;
   DrawQuad(s + 1, AdjustBrightness(NumbersSecondColor[0], Rest, 10000), AdjustBrightness(NumbersSecondColor[1], Rest, 10000), AdjustBrightness(NumbersSecondColor[2], Rest, 10000));
 }
 
@@ -207,6 +251,7 @@ void SetBrightness() {
     Matrix.clear();
     Matrix.show();
     Status = false;
+    Mode = 0;
   } else {
     Status = true;
     Matrix.setBrightness(map(ldrStatus, MinLight, MaxLight, 0, MaxBrightness));
@@ -350,6 +395,14 @@ int MatrixConvert(int x, int y, bool center) {
   } else {
     Error("Der Wert darf nicht höher als die max Höhe und Breite sein");
   } return nummer - 1;
+}
+
+void GetAverage(int Samples) {
+  for (int i = 0; i < Samples; i++) {
+    AverageSound += analogRead(A2);
+    delay(100);
+  }
+  AverageSound = AverageSound / Samples;
 }
 
 void Error(String Code) {
