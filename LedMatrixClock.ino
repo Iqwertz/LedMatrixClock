@@ -47,12 +47,13 @@ bool Status = true;
 byte Mode = 1; // 0 = Clock / 1 = Numbers / 2 = off
 
 /////////////////Audio Settings///////////////////////
-const int ThresholdDiffrence = 5;
-const int ClappingIntervall = 1500;
+const int ThresholdDiffrence = 10;
+const int ClappingDelay = 400;
+const int ClappingIntervall = 2000;
 const int MeasuringIntervall = 10;
 
 int Spikes = 0;
-int AverageSound = 0;
+int AverageSound[2] = {0, 0};
 long FirstSpikeMillis = 0;
 long LastSound = 0;
 
@@ -71,7 +72,7 @@ void setup() {
   LastMilliseconds = millis();
   LastSound = millis();
 
-  GetAverage(10);
+  GetAverage(30);
 }
 
 void loop() {
@@ -82,7 +83,7 @@ void loop() {
     Sound();
     if (Mode == 0) {
       if (now.second() - LastSecond >= 1) {
-        Rotate = 3;
+        Rotate = 2;
         Milliseconds = 0;
         LastSecond = now.second();
 
@@ -101,7 +102,7 @@ void loop() {
 
 
         DrawMinute(now.minute());
-        DrawHour(now.hour());
+        DrawHour(now.hour(), now.minute());
         DrawOutline();
 
         DrawPixel(0, 0, true, 255, 25, 16);
@@ -112,7 +113,7 @@ void loop() {
       }
     } else if (Mode == 1) {
       if (millis() - LastMilliseconds >= 100) {
-        Rotate = 0;
+        Rotate = 3;
         Matrix.clear();
         LastMilliseconds = millis();
         Milliseconds += 100;
@@ -134,25 +135,33 @@ void loop() {
 void Sound() {
   if (millis() - LastSound >= MeasuringIntervall) {
     LastSound = millis();
+    Serial.print(analogRead(A2));
+    Serial.print(",");
+    Serial.print(AverageSound[0]);
+    Serial.print(",");
+    Serial.println(AverageSound[1]);
     int ReadValue = analogRead(A2);
-    Serial.println(ReadValue);
-    if ( AverageSound - ReadValue >= ThresholdDiffrence) {
-      Spikes++;
+    if (millis() - FirstSpikeMillis >= ClappingDelay) {
+      if ( ReadValue - AverageSound[1] >= ThresholdDiffrence || AverageSound[0] - ReadValue >= ThresholdDiffrence) {
+        Spikes++;
+      }
     }
     if (Spikes == 1) {
       FirstSpikeMillis = millis();
       //Serial.println("SPIKE");
     }
 
-    if (millis() - FirstSpikeMillis >= ClappingIntervall  && Spikes >= 1) {
-      if (Spikes >= 1 && Spikes <= 4) {
-        Mode++;
-        Serial.println(0);
-        if (Mode == 3) {
-          Mode = 0;
-        } else if (Mode == 2) {
-          Matrix.clear();
-          Matrix.show();
+    if ( millis() - FirstSpikeMillis >= ClappingIntervall  && Spikes >= 1) {
+      if (Spikes >= 2 && Spikes <= 2) {
+        if (Spikes >= 1 && Spikes <= 4) {
+          Mode++;
+          Serial.println(0);
+          if (Mode == 3) {
+            Mode = 0;
+          } else if (Mode == 2) {
+            Matrix.clear();
+            Matrix.show();
+          }
         }
       }
       //Serial.println(Spikes);
@@ -283,11 +292,14 @@ void DrawMinute(byte m) {
   DrawFinger(map(m * 6, 0, 360, 360, 0), Breite / 2 - 3, MinuteColor[0], MinuteColor[1], MinuteColor[2]);
 }
 
-void DrawHour(byte h) {
+void DrawHour(int h, int m) {
   if (h > 12) {
     h -= 12;
   }
-  DrawFinger(map(h * 30, 0, 360, 360, 0), Breite / 2 - 4, HourColor[0], HourColor[1], HourColor[2]);
+  h = h * 60;
+  h = h + m;
+  h = round(h * 0.5);
+  DrawFinger(map(h, 0, 360, 360, 0), Breite / 2 - 4, HourColor[0], HourColor[1], HourColor[2]);
 }
 
 byte AdjustBrightness(byte v, int brightness, float MaxB) {
@@ -349,24 +361,23 @@ int MatrixConvert(int x, int y, bool center) {
 
   if (Rotate == 1) {
     int a = x;
-    x = y;
+    x = Breite - y + 1;
     y = a;
 
     a = x;
-    x = y;
+    x = Breite - y + 1;
     y = a;
 
     a = x;
-    x = y;
+    x = Breite - y + 1;
     y = a;
-
   } else if (Rotate == 2) {
     int a = x;
-    x = y;
+    x = Breite - y + 1;
     y = a;
 
     a = x;
-    x = y;
+    x = Breite - y + 1;
     y = a;
   } else if (Rotate == 3) {
     int a = x;
@@ -398,11 +409,23 @@ int MatrixConvert(int x, int y, bool center) {
 }
 
 void GetAverage(int Samples) {
+  int MinSample;
+  int MaxSample;
+  int AVal = analogRead(A2);
+  MinSample = MaxSample = AVal;
+
   for (int i = 0; i < Samples; i++) {
-    AverageSound += analogRead(A2);
-    delay(100);
+    AVal = analogRead(A2);
+    if (AVal > MaxSample) {
+      MaxSample = AVal;
+    }
+    if (AVal < MinSample) {
+      MinSample = AVal;
+    }
+    delay(10);
   }
-  AverageSound = AverageSound / Samples;
+  AverageSound[0] = MinSample;
+  AverageSound[1] = MaxSample;
 }
 
 void Error(String Code) {
