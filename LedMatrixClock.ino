@@ -1,3 +1,11 @@
+////////////////Led Matrix Clock////////////////////////
+//Code for my 16*16 led display to work as a clock
+//needs an rtc module to work
+//when an ldr sensor is connected to pin A1 the display will dim acording to the surrounding light
+//It has 3 Modes: 0 looks like a traditional clock, 1 looks like a digital clock, 2 is off
+//It also suppots an audio sensor at pin A2 to make it activate on sounds but this never really worked and would need improvements
+//An Motion Sensot can be connected to pin A2 to turn the display off when no motion was detected for some time
+
 ///////////////////////Include Libs////////////////////////
 #include <Adafruit_NeoPixel.h>
 #include <Wire.h>
@@ -12,7 +20,7 @@ const bool invert = true; //Set depending on the wiring
 const bool rightstart = true;  //Check when the start is on the right side
 const int Display = 6; //Pin of the display
 const int ldrPin = A1; //Pin for the ldr Sensor
-byte Rotate = 0; //Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
+const byte rotateAdj = 3; //Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
 const int MaxLight = 700;  //Ldr Value when enviroment Light is maximum
 const int MinLight = 350;  //Ldr Value when Light is off
 const byte MaxBrightness = 100;  //Max Brightness of the Display
@@ -24,8 +32,13 @@ const int ClappingDelay = 100;     //Min Delay between Spikes
 const int ClappingIntervall = 2000;    //Max time between Clapping
 const int MeasuringIntervall = 10;  //ms between measurments
 
+////////////////Motion Sensor settings//////////////
+const boolean UseMotionSensor = true;  //set to true when an sensor is connected
+const int MotionSensorThresholdTimeOff = 10; //Amount of seconds after which the clock will turn off when no motion is detected
+const int DefaultMode = 1;  //The mode that should be used when a motion is detected
+
 //////////////////Settings for the Clock Mode////////////////
-const byte ClockOutlineColor[3] = {77, 255, 160};   
+const byte ClockOutlineColor[3] = {77, 255, 160};
 const byte QuarterOutlineLength = 11;
 const byte QuarterOutline[QuarterOutlineLength][2] = {{1, 8}, {2, 8}, {3, 7}, {4, 7}, {5, 7}, {6, 6}, {7, 5}, {7, 4}, {7, 3}, {8, 2}, {8, 1}};
 
@@ -57,12 +70,16 @@ int LastSecond = 0;
 byte LastMinute = 0;
 long LastMilliseconds = 0;
 bool Status = true;
+byte rotate = 3;
 
 /////Audio Vars//////
 int Spikes = 0;
 int AverageSound[2] = {0, 0};
 long FirstSpikeMillis = 0;
 long LastSound = 0;
+
+/////Motion Sensor Vars//////
+long LastDetectedMotion = 0;
 
 ////////Ini Pixel
 #define NUMPIXELS Hohe*Breite
@@ -79,20 +96,36 @@ void setup() {
   Matrix.show();
 
   LastMilliseconds = millis();
-  LastSound = millis();
 
-  GetAverage(30);   //Get Average Value of the sound
+  if(UseMotionSensor){
+    LastDetectedMotion = millis();
+    pinMode(A2, INPUT);
+  }else{
+    LastSound = millis();
+    GetAverage(30);   //Get Average Value of the sound
+  }
 }
 
 void loop() {
   SetBrightness();
-
   if (Status) {
+    if(UseMotionSensor){
+      CheckMotionSensor();
+    }else{
+      Sound();
+    }
+
+    if(Mode== 2){
+      Matrix.clear();
+      Matrix.show();
+      return;
+    }
+
     DateTime now = RTC.now();  //Get Time
-    Sound();   //Check Sound
+    
     if (Mode == 0) {
       if (now.second() - LastSecond >= 1) {  //Check if Second changed
-        Rotate = 2; 
+        setRotate(2);
         Milliseconds = 0;
         LastSecond = now.second();
 
@@ -122,7 +155,7 @@ void loop() {
       }
     } else if (Mode == 1) {
       if (millis() - LastMilliseconds >= 100) {
-        Rotate = 3;
+        setRotate(3);
         Matrix.clear();
         LastMilliseconds = millis();
         Milliseconds += 100;
@@ -138,6 +171,20 @@ void loop() {
         Matrix.show();
       }
     }
+  }
+}
+
+void CheckMotionSensor(){
+  if(digitalRead(A2)){
+    Mode = DefaultMode;
+    LastDetectedMotion = millis();
+  }else{
+    Serial.println(millis()-LastDetectedMotion);
+    if(millis()-LastDetectedMotion>MotionSensorThresholdTimeOff*1000){
+      Mode = 2;
+      Serial.println("off");
+    }
+    
   }
 }
 
@@ -204,6 +251,13 @@ void DrawNumbers(int z1, int z2, int z3, int z4) {  //Draws 4 numbers to the dis
   SelectNumber(z2, 1);
   SelectNumber(z3, 2);
   SelectNumber(z4, 3);
+}
+
+void setRotate(byte rot) {
+  rotate = rot + rotateAdj;
+  if (rotate > 3) {
+    rotate = rotate-4;
+  }
 }
 
 void SelectNumber(int n, byte mode) { //Selcts the Array var corresponding number and Sets it
@@ -367,7 +421,7 @@ int MatrixConvert(int x, int y, bool center) {  //Converts an x,y Cordinate to t
     y += round(Hohe / 2);
   }
 
-  if (Rotate == 1) {
+  if (rotate == 1) {
     int a = x;
     x = Breite - y + 1;
     y = a;
@@ -379,7 +433,7 @@ int MatrixConvert(int x, int y, bool center) {  //Converts an x,y Cordinate to t
     a = x;
     x = Breite - y + 1;
     y = a;
-  } else if (Rotate == 2) {
+  } else if (rotate == 2) {
     int a = x;
     x = Breite - y + 1;
     y = a;
@@ -387,7 +441,7 @@ int MatrixConvert(int x, int y, bool center) {  //Converts an x,y Cordinate to t
     a = x;
     x = Breite - y + 1;
     y = a;
-  } else if (Rotate == 3) {
+  } else if (rotate == 3) {
     int a = x;
     x = Breite - y + 1;
     y = a;
