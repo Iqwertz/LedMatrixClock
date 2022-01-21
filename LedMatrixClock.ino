@@ -120,6 +120,9 @@ void loop() {
          Milliseconds += 100;
          LastMilliseconds = millis();
       }
+      if (Milliseconds >= 60000) {
+        Milliseconds = 0;
+      }
       Matrix.clear();
       Matrix.show();
       return;
