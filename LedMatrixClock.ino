@@ -116,6 +116,10 @@ void loop() {
     }
 
     if(Mode== 2){
+      if (millis() - LastMilliseconds >= 100) {  //keep counting seconds when matrix is turned off
+         Milliseconds += 100;
+         LastMilliseconds = millis();
+      }
       Matrix.clear();
       Matrix.show();
       return;
