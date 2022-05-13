@@ -34,7 +34,7 @@ const int MeasuringIntervall = 10;  //ms between measurments
 
 ////////////////Motion Sensor settings//////////////
 const boolean UseMotionSensor = true;  //set to true when an sensor is connected
-const int MotionSensorThresholdTimeOff = 10; //Amount of seconds after which the clock will turn off when no motion is detected
+const int MotionSensorThresholdTimeOff = 60; //Amount of seconds after which the clock will turn off when no motion is detected
 const int DefaultMode = 1;  //The mode that should be used when a motion is detected
 
 //////////////////Settings for the Clock Mode////////////////
@@ -47,6 +47,7 @@ const byte MinuteColor[3] = {77, 255, 2550};
 const byte SecondColor[3] = {0, 255, 0};
 
 //////////////////Settings for the Number Mode////////////////
+const int ColorMode = 2; //0 = Fixed color (NumbersSecondColor), 1=color based on seconds, 2=color based on minutes, 3=color based on hours
 const byte NumbersSecondColor[3] = {0, 200, 100};
 const byte NumbersMinuteColor[3] = {255, 255, 255};
 const byte NumbersHourColor[3] = {255, 255, 255};
@@ -97,10 +98,10 @@ void setup() {
 
   LastMilliseconds = millis();
 
-  if(UseMotionSensor){
+  if (UseMotionSensor) {
     LastDetectedMotion = millis();
     pinMode(A2, INPUT);
-  }else{
+  } else {
     LastSound = millis();
     GetAverage(30);   //Get Average Value of the sound
   }
@@ -109,16 +110,16 @@ void setup() {
 void loop() {
   SetBrightness();
   if (Status) {
-    if(UseMotionSensor){
+    if (UseMotionSensor) {
       CheckMotionSensor();
-    }else{
+    } else {
       Sound();
     }
 
-    if(Mode== 2){
+    if (Mode == 2) {
       if (millis() - LastMilliseconds >= 100) {  //keep counting seconds when matrix is turned off
-         Milliseconds += 100;
-         LastMilliseconds = millis();
+        Milliseconds += 100;
+        LastMilliseconds = millis();
       }
       if (Milliseconds >= 60000) {
         Milliseconds = 0;
@@ -129,7 +130,7 @@ void loop() {
     }
 
     DateTime now = RTC.now();  //Get Time
-    
+
     if (Mode == 0) {
       if (now.second() - LastSecond >= 1) {  //Check if Second changed
         setRotate(2);
@@ -181,17 +182,16 @@ void loop() {
   }
 }
 
-void CheckMotionSensor(){
-  if(digitalRead(A2)){
+void CheckMotionSensor() {
+  if (digitalRead(A2)) {
     Mode = DefaultMode;
     LastDetectedMotion = millis();
-  }else{
-    Serial.println(millis()-LastDetectedMotion);
-    if(millis()-LastDetectedMotion>MotionSensorThresholdTimeOff*1000){
+  } else {
+    if (millis() - LastDetectedMotion > MotionSensorThresholdTimeOff * 1000) {
       Mode = 2;
       Serial.println("off");
     }
-    
+
   }
 }
 
@@ -233,13 +233,30 @@ void Sound() {   //Check for Sound & Detect Double Clap
 }
 
 void DrawRectSecond(long ms) {  //Draw Rectangles with fade depending on ms
+
+  byte currentColor[3] = {NumbersSecondColor[0], NumbersSecondColor[1], NumbersSecondColor[2]};
+
+  switch (ColorMode) {
+    case 0:
+      break;
+    case 1:
+      Wheel(map(ms, 0, 60000, 255, 0), currentColor[0], currentColor[1], currentColor[2]);
+      break;
+    case 2:
+      Wheel(map(RTC.now().minute(), 0, 60, 255, 0), currentColor[0], currentColor[1], currentColor[2]);
+      break;
+    case 3:
+      Wheel(map(RTC.now().hour(), 0, 24, 255, 0), currentColor[0], currentColor[1], currentColor[2]);
+      break;
+  }
+
   ms = round(ms * 1.33334); //Convert ms (0 - 60000) to a range of 0 to  80000
   int s = floor(ms / 10000);  //Get Seconds)
   for (int i = 1; i <= s; i++) {
-    DrawQuad(i, NumbersSecondColor[0], NumbersSecondColor[1], NumbersSecondColor[2]);  //Draw Quad for every Second
+    DrawQuad(i, currentColor[0], currentColor[1], currentColor[2]);  //Draw Quad for every Second
   }
   int Rest = ms % 10000; //Get ms for outer fading Square
-  DrawQuad(s + 1, AdjustBrightness(NumbersSecondColor[0], Rest, 10000), AdjustBrightness(NumbersSecondColor[1], Rest, 10000), AdjustBrightness(NumbersSecondColor[2], Rest, 10000));   //Draw Outest QUad with a fade depending on the brightness
+  DrawQuad(s + 1, AdjustBrightness(currentColor[0], Rest, 10000), AdjustBrightness(currentColor[1], Rest, 10000), AdjustBrightness(currentColor[2], Rest, 10000));   //Draw Outest QUad with a fade depending on the brightness
 }
 
 void DrawQuad(byte dist, byte r, byte g, byte b) {  //Draw a Quadrat around the Center with a given Distance
@@ -263,7 +280,7 @@ void DrawNumbers(int z1, int z2, int z3, int z4) {  //Draws 4 numbers to the dis
 void setRotate(byte rot) {
   rotate = rot + rotateAdj;
   if (rotate > 3) {
-    rotate = rotate-4;
+    rotate = rotate - 4;
   }
 }
 
@@ -337,13 +354,39 @@ void SetBrightness() {   //Set the Brightness of the Display depending on the ld
 }
 
 void DrawOutline() {  //Draws the Outline of the Clock
+
+  uint32_t currentColor = Matrix.Color(ClockOutlineColor[0], ClockOutlineColor[1], ClockOutlineColor[2]);
+
   for (int i = 0; i < QuarterOutlineLength; i++) {
-    Matrix.setPixelColor(MatrixConvert(QuarterOutline[i][0], QuarterOutline[i][1], true), Matrix.Color(ClockOutlineColor[0], ClockOutlineColor[1], ClockOutlineColor[2]));
-    Matrix.setPixelColor(MatrixConvert(QuarterOutline[i][0] * -1 + 1, QuarterOutline[i][1], true), Matrix.Color(ClockOutlineColor[0], ClockOutlineColor[1], ClockOutlineColor[2]));
-    Matrix.setPixelColor(MatrixConvert(QuarterOutline[i][0], QuarterOutline[i][1] * -1 + 1, true), Matrix.Color(ClockOutlineColor[0], ClockOutlineColor[1], ClockOutlineColor[2]));
-    Matrix.setPixelColor(MatrixConvert(QuarterOutline[i][0] * -1 + 1, QuarterOutline[i][1] * -1 + 1, true), Matrix.Color(ClockOutlineColor[0], ClockOutlineColor[1], ClockOutlineColor[2]));
+    Matrix.setPixelColor(MatrixConvert(QuarterOutline[i][0], QuarterOutline[i][1], true), currentColor);
+    Matrix.setPixelColor(MatrixConvert(QuarterOutline[i][0] * -1 + 1, QuarterOutline[i][1], true), currentColor);
+    Matrix.setPixelColor(MatrixConvert(QuarterOutline[i][0], QuarterOutline[i][1] * -1 + 1, true), currentColor);
+    Matrix.setPixelColor(MatrixConvert(QuarterOutline[i][0] * -1 + 1, QuarterOutline[i][1] * -1 + 1, true), currentColor);
   }
 }
+
+void Wheel(byte WheelPos, byte & r, byte & g, byte & b)
+{
+  WheelPos = 255 - WheelPos;
+  if (WheelPos < 85)
+  {
+    r = 255 - WheelPos * 3;
+    g = 0;
+    b = WheelPos * 3;
+  } else if (WheelPos < 170)
+  {
+    WheelPos -= 85;
+    r = 0;
+    g = WheelPos * 3;
+    b = 255 - WheelPos * 3;
+  } else {
+    WheelPos -= 170;
+    r = WheelPos * 3;
+    g = 255 - WheelPos * 3;
+    b = 0;
+  }
+}
+
 
 void DrawSecond(byte s, int ms) { //Draws the Second finger
   /* s++;
