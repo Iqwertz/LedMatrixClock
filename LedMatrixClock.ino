@@ -7,26 +7,29 @@
 // An Motion Sensot can be connected to pin A2 to turn the display off when no motion was detected for some time
 ///////////////////////Include Libs////////////////////////
 #include <Adafruit_NeoPixel.h>
+#include <DS3231.h>
 #include <Wire.h>
-#include "DS3231.h"
 
 RTClib RTC;
+DS3231 Clock;
 
 ////////////////////////Pins/////////////////////
 const int Display = 6;          // Pin of the display
 const int ldrPin = A1;          // Pin for the ldr Sensor
 const int motionSensorPin = A2; // Pin for the motion sensor
 const int audioSensorPin = A3;  // Pin for the audio sensor (implementation is a bit buggy)
+const int buttonPin = 2;        // Pin for the button to set the timer
 
 ///////////////////////Display Settings///////////////////
 const int Hohe = 16;            // Height (in px)
 const int Breite = 16;          // Width (in px)
-const bool invert = true;       // Set depending on the wiring
+const bool invert = false;       // Set depending on the wiring
+const bool flipAxis[3] = {true, false, false};
 const bool rightstart = true;   // Check when the start is on the right side
 const byte rotateAdj = 3;       // Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
 const int MaxLight = 700;       // Ldr Value when enviroment Light is maximum
 const int MinLight = 350;       // Ldr Value when Light is off
-const byte MaxBrightness = 100; // Max Brightness of the Display
+const byte MaxBrightness = 200; // Max Brightness of the Display
 byte Mode = 1;                  // 0 = Clock / 1 = Numbers / 2 = off
 
 /////////////////Audio Settings///////////////////////
@@ -76,6 +79,8 @@ long LastMilliseconds = 0;
 bool Status = true;
 byte rotate = 3;
 
+
+
 /////Audio Vars//////
 int Spikes = 0;
 int AverageSound[2] = {0, 0};
@@ -84,6 +89,9 @@ long LastSound = 0;
 
 /////Motion Sensor Vars//////
 long LastDetectedMotion = 0;
+
+/////Button Vars/////
+long ButtonPressStart = 0;
 
 ////////Ini Pixel
 #define NUMPIXELS Hohe *Breite
@@ -94,6 +102,7 @@ void setup()
   Serial.begin(115200);
   Wire.begin();
 
+  pinMode(buttonPin, INPUT);
   /////Matrix Setup//////
   Matrix.begin();
   Matrix.setBrightness(MaxBrightness);
@@ -117,6 +126,30 @@ void setup()
 void loop()
 {
   SetBrightness();
+
+  if(digitalRead(buttonPin)){
+    if(ButtonPressStart==0){
+      ButtonPressStart = millis();
+    }else if(millis()-ButtonPressStart>=500){
+      DateTime now = RTC.now(); // Get Time
+      byte m = now.minute() + 1;
+      byte h = now.hour();
+      if(m>=60){
+        h++;
+        m = 0;
+      }
+      if(h>24){
+        h=0;
+      }
+  //    RTC.adjust(DateTime(now.year(),now.month(),now.day(),h,m,now.second()))
+  Clock.setMinute(m);
+  Clock.setHour(h);
+      ButtonPressStart = millis();
+    }
+  }else{
+    ButtonPressStart = 0;
+  }
+  
   if (Status)
   {
     if (UseMotionSensor)
@@ -125,7 +158,7 @@ void loop()
     }
     else
     {
-      Sound();
+     // Sound();
     }
 
     if (Mode == 2)
@@ -219,7 +252,7 @@ void CheckMotionSensor()
     if (millis() - LastDetectedMotion > MotionSensorThresholdTimeOff * 1000)
     {
       Mode = 2;
-      Serial.println("off");
+     // Serial.println("off");
     }
   }
 }
@@ -537,6 +570,7 @@ void DrawLine(int x0, int y0, int x1, int y1, byte r, byte g, byte b) // Draws a
 
 void DrawPixel(int px, int py, bool c, byte r, byte g, byte b)
 { // Draws a pixel on the matrix
+  invertCordinates(px,py);
   Matrix.setPixelColor(MatrixConvert(px, py, c), Matrix.Color(r, g, b));
 }
 
@@ -642,6 +676,20 @@ void GetAverage(int Samples)
   }
   AverageSound[0] = MinSample;
   AverageSound[1] = MaxSample;
+}
+
+void invertCordinates(int& x, int& y) {
+  if (flipAxis[0] == true) {
+    x = map(x, -7, 8, 8, -7);
+  }
+  if (flipAxis[1] == true) {
+    y = map(y, -8, 8, 8, -8);
+  }
+  if(flipAxis[2] == true){
+    int z = x;
+    x=y;
+  y=z;
+  }
 }
 
 void Error(String Code)
