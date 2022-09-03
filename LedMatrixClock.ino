@@ -436,6 +436,9 @@ void SetBrightness()
   else
   {
     Status = true;
+    if(ldrStatus>MaxLight){
+      ldrStatus=MaxLight;
+    }
     Matrix.setBrightness(map(ldrStatus, MinLight, MaxLight, 0, MaxBrightness));
   }
 }
