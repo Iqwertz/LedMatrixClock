@@ -249,10 +249,9 @@ void CheckMotionSensor()
   }
   else
   {
-    if (millis() - LastDetectedMotion > MotionSensorThresholdTimeOff * 1000)
+    if (millis() - LastDetectedMotion > (long)MotionSensorThresholdTimeOff * (long)1000)
     {
       Mode = 2;
-     // Serial.println("off");
     }
   }
 }
