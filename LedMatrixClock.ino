@@ -27,9 +27,10 @@ const bool invert = false;       // Set depending on the wiring
 const bool flipAxis[3] = {true, false, false};
 const bool rightstart = true;   // Check when the start is on the right side
 const byte rotateAdj = 3;       // Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
-const int MaxLight = 700;       // Ldr Value when enviroment Light is maximum
-const int MinLight = 350;       // Ldr Value when Light is off
+const int MaxLight = 400;       // Ldr Value when enviroment Light is maximum
+const int MinLight = 45;       // Ldr Value when Light is off
 const byte MaxBrightness = 200; // Max Brightness of the Display
+const byte MinBrightness = 50; // Min Brightness of the Display
 byte Mode = 1;                  // 0 = Clock / 1 = Numbers / 2 = off
 
 /////////////////Audio Settings///////////////////////
@@ -127,29 +128,39 @@ void loop()
 {
   SetBrightness();
 
-  if(digitalRead(buttonPin)){
-    if(ButtonPressStart==0){
+  if (digitalRead(buttonPin)) {
+    if (ButtonPressStart == 0) {
       ButtonPressStart = millis();
-    }else if(millis()-ButtonPressStart>=500){
+    } else if (millis() - ButtonPressStart >= 500) {
       DateTime now = RTC.now(); // Get Time
-      byte m = now.minute() + 1;
-      byte h = now.hour();
-      if(m>=60){
+      byte m, h = 0;
+      m = now.minute();
+      h = now.hour() + 1;
+      if (h > 24) {
+        h = 0;
+      }
+      Clock.setHour(h);
+      ButtonPressStart = millis();
+    }
+  } else {
+    if (millis() - ButtonPressStart < 500 && ButtonPressStart > 0) {
+      DateTime now = RTC.now(); // Get Time
+      byte m, h = 0;
+      m = now.minute() + 1;
+      h = now.hour();
+      if (m >= 60) {
         h++;
         m = 0;
       }
-      if(h>24){
-        h=0;
+      if (h > 24) {
+        h = 0;
       }
-  //    RTC.adjust(DateTime(now.year(),now.month(),now.day(),h,m,now.second()))
-  Clock.setMinute(m);
-  Clock.setHour(h);
-      ButtonPressStart = millis();
+      Clock.setMinute(m);
+      Clock.setHour(h);
     }
-  }else{
     ButtonPressStart = 0;
   }
-  
+
   if (Status)
   {
     if (UseMotionSensor)
@@ -158,7 +169,7 @@ void loop()
     }
     else
     {
-     // Sound();
+      // Sound();
     }
 
     if (Mode == 2)
@@ -286,7 +297,6 @@ void Sound()
         if (Spikes >= 1 && Spikes <= 4)
         {
           Mode++;
-          Serial.println(0);
           if (Mode == 3)
           {
             Mode = 0;
@@ -311,17 +321,17 @@ void DrawRectSecond(long ms)
 
   switch (ColorMode)
   {
-  case 0:
-    break;
-  case 1:
-    Wheel(map(ms, 0, 60000, 255, 0), currentColor[0], currentColor[1], currentColor[2]);
-    break;
-  case 2:
-    Wheel(map(RTC.now().minute(), 0, 60, 255, 0), currentColor[0], currentColor[1], currentColor[2]);
-    break;
-  case 3:
-    Wheel(map(RTC.now().hour(), 0, 24, 255, 0), currentColor[0], currentColor[1], currentColor[2]);
-    break;
+    case 0:
+      break;
+    case 1:
+      Wheel(map(ms, 0, 60000, 255, 0), currentColor[0], currentColor[1], currentColor[2]);
+      break;
+    case 2:
+      Wheel(map(RTC.now().minute(), 0, 60, 255, 0), currentColor[0], currentColor[1], currentColor[2]);
+      break;
+    case 3:
+      Wheel(map(RTC.now().hour(), 0, 24, 255, 0), currentColor[0], currentColor[1], currentColor[2]);
+      break;
   }
 
   ms = round(ms * 1.33334);  // Convert ms (0 - 60000) to a range of 0 to  80000
@@ -368,36 +378,36 @@ void SelectNumber(int n, byte mode)
 { // Selcts the Array var corresponding number and Sets it
   switch (n)
   {
-  case 0:
-    SetNumber(N0, sizeof(N0) / sizeof(N0[0]), mode);
-    break;
-  case 1:
-    SetNumber(N1, sizeof(N1) / sizeof(N1[0]), mode);
-    break;
-  case 2:
-    SetNumber(N2, sizeof(N2) / sizeof(N2[0]), mode);
-    break;
-  case 3:
-    SetNumber(N3, sizeof(N3) / sizeof(N3[0]), mode);
-    break;
-  case 4:
-    SetNumber(N4, sizeof(N4) / sizeof(N4[0]), mode);
-    break;
-  case 5:
-    SetNumber(N5, sizeof(N5) / sizeof(N5[0]), mode);
-    break;
-  case 6:
-    SetNumber(N6, sizeof(N6) / sizeof(N6[0]), mode);
-    break;
-  case 7:
-    SetNumber(N7, sizeof(N7) / sizeof(N7[0]), mode);
-    break;
-  case 8:
-    SetNumber(N8, sizeof(N8) / sizeof(N8[0]), mode);
-    break;
-  case 9:
-    SetNumber(N9, sizeof(N9) / sizeof(N9[0]), mode);
-    break;
+    case 0:
+      SetNumber(N0, sizeof(N0) / sizeof(N0[0]), mode);
+      break;
+    case 1:
+      SetNumber(N1, sizeof(N1) / sizeof(N1[0]), mode);
+      break;
+    case 2:
+      SetNumber(N2, sizeof(N2) / sizeof(N2[0]), mode);
+      break;
+    case 3:
+      SetNumber(N3, sizeof(N3) / sizeof(N3[0]), mode);
+      break;
+    case 4:
+      SetNumber(N4, sizeof(N4) / sizeof(N4[0]), mode);
+      break;
+    case 5:
+      SetNumber(N5, sizeof(N5) / sizeof(N5[0]), mode);
+      break;
+    case 6:
+      SetNumber(N6, sizeof(N6) / sizeof(N6[0]), mode);
+      break;
+    case 7:
+      SetNumber(N7, sizeof(N7) / sizeof(N7[0]), mode);
+      break;
+    case 8:
+      SetNumber(N8, sizeof(N8) / sizeof(N8[0]), mode);
+      break;
+    case 9:
+      SetNumber(N9, sizeof(N9) / sizeof(N9[0]), mode);
+      break;
   }
 }
 
@@ -407,18 +417,18 @@ void SetNumber(byte arr[][2], byte Size, byte M)
   {
     switch (M)
     {
-    case 0:
-      DrawPixel(arr[i][0] - Breite / 2 + 1, arr[i][1] + 1, true, NumbersHourColor[0], NumbersHourColor[1], NumbersHourColor[2]);
-      break;
-    case 1:
-      DrawPixel(arr[i][0], arr[i][1] + 1, true, NumbersHourColor[0], NumbersHourColor[1], NumbersHourColor[2]);
-      break;
-    case 2:
-      DrawPixel(arr[i][0] - Breite / 2 + 1, arr[i][1] - Hohe / 2, true, NumbersMinuteColor[0], NumbersMinuteColor[1], NumbersMinuteColor[2]);
-      break;
-    case 3:
-      DrawPixel(arr[i][0], arr[i][1] - Hohe / 2, true, NumbersMinuteColor[0], NumbersMinuteColor[1], NumbersMinuteColor[2]);
-      break;
+      case 0:
+        DrawPixel(arr[i][0] - Breite / 2 + 1, arr[i][1] + 1, true, NumbersHourColor[0], NumbersHourColor[1], NumbersHourColor[2]);
+        break;
+      case 1:
+        DrawPixel(arr[i][0], arr[i][1] + 1, true, NumbersHourColor[0], NumbersHourColor[1], NumbersHourColor[2]);
+        break;
+      case 2:
+        DrawPixel(arr[i][0] - Breite / 2 + 1, arr[i][1] - Hohe / 2, true, NumbersMinuteColor[0], NumbersMinuteColor[1], NumbersMinuteColor[2]);
+        break;
+      case 3:
+        DrawPixel(arr[i][0], arr[i][1] - Hohe / 2, true, NumbersMinuteColor[0], NumbersMinuteColor[1], NumbersMinuteColor[2]);
+        break;
     }
   }
 }
@@ -436,10 +446,10 @@ void SetBrightness()
   else
   {
     Status = true;
-    if(ldrStatus>MaxLight){
-      ldrStatus=MaxLight;
+    if (ldrStatus > MaxLight) {
+      ldrStatus = MaxLight;
     }
-    Matrix.setBrightness(map(ldrStatus, MinLight, MaxLight, 0, MaxBrightness));
+    Matrix.setBrightness(map(ldrStatus, MinLight, MaxLight, MinBrightness, MaxBrightness));
   }
 }
 
@@ -572,7 +582,7 @@ void DrawLine(int x0, int y0, int x1, int y1, byte r, byte g, byte b) // Draws a
 
 void DrawPixel(int px, int py, bool c, byte r, byte g, byte b)
 { // Draws a pixel on the matrix
-  invertCordinates(px,py);
+  invertCordinates(px, py);
   Matrix.setPixelColor(MatrixConvert(px, py, c), Matrix.Color(r, g, b));
 }
 
@@ -687,10 +697,10 @@ void invertCordinates(int& x, int& y) {
   if (flipAxis[1] == true) {
     y = map(y, -8, 8, 8, -8);
   }
-  if(flipAxis[2] == true){
+  if (flipAxis[2] == true) {
     int z = x;
-    x=y;
-  y=z;
+    x = y;
+    y = z;
   }
 }
 
