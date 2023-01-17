@@ -31,6 +31,7 @@ const int MaxLight = 400;       // Ldr Value when enviroment Light is maximum
 const int MinLight = 45;       // Ldr Value when Light is off
 const byte MaxBrightness = 200; // Max Brightness of the Display
 const byte MinBrightness = 50; // Min Brightness of the Display
+const int TurnOffDelay = 120000; //Delay until the matrix switches off when light level falls under min Brightness
 byte Mode = 1;                  // 0 = Clock / 1 = Numbers / 2 = off
 
 /////////////////Audio Settings///////////////////////
