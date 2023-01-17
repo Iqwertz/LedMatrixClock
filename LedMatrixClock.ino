@@ -14,11 +14,11 @@ RTClib RTC;
 DS3231 Clock;
 
 ////////////////////////Pins/////////////////////
-const int Display = 6;          // Pin of the display
-const int ldrPin = A1;          // Pin for the ldr Sensor
-const int motionSensorPin = A2; // Pin for the motion sensor
-const int audioSensorPin = A3;  // Pin for the audio sensor (implementation is a bit buggy)
-const int buttonPin = 2;        // Pin for the button to set the timer
+#define Display 6          // Pin of the display
+#define ldrPin A1          // Pin for the ldr Sensor
+#define motionSensorPin A2 // Pin for the motion sensor
+#define audioSensorPin A3  // Pin for the audio sensor (implementation is a bit buggy)
+#define buttonPin 2        // Pin for the button to set the timer
 
 ///////////////////////Display Settings///////////////////
 const int Hohe = 16;            // Height (in px)
@@ -80,6 +80,7 @@ byte LastMinute = 0;
 long LastMilliseconds = 0;
 bool Status = true;
 byte rotate = 3;
+long lastLightOnMillis = 0;
 
 
 
@@ -437,7 +438,7 @@ void SetNumber(byte arr[][2], byte Size, byte M)
 void SetBrightness()
 { // Set the Brightness of the Display depending on the ldr readings / if the value drops below a definde value the display is turned off
   int ldrStatus = analogRead(ldrPin);
-  if (ldrStatus <= MinLight)
+  if (ldrStatus <= MinLight && millis() - lastLightOnMillis >= TurnOffDelay)
   {
     Matrix.clear();
     Matrix.show();
@@ -446,6 +447,7 @@ void SetBrightness()
   }
   else
   {
+    lastLightOnMillis = millis();
     Status = true;
     if (ldrStatus > MaxLight) {
       ldrStatus = MaxLight;
