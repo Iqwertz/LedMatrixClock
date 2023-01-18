@@ -28,10 +28,10 @@ const bool flipAxis[3] = {false, false, true};
 const bool rightstart = false;   // Check when the start is on the right side
 const byte rotateAdj = 0;       // Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
 const int MaxLight = 600;       // Ldr Value when enviroment Light is maximum
-const int MinLight = 45;       // Ldr Value when Light is off
+const int MinLight = 60;       // Ldr Value when Light is off
 const byte MaxBrightness = 200; // Max Brightness of the Display
 const byte MinBrightness = 70; // Min Brightness of the Display
-const int TurnOffDelay = 120000; //Delay until the matrix switches off when light level falls under min Brightness
+const int TurnOffDelay = 60000; //Delay until the matrix switches off when light level falls under min Brightness
 byte Mode = 1;                  // 0 = Clock / 1 = Numbers / 2 = off
 
 /////////////////Audio Settings///////////////////////
@@ -438,13 +438,15 @@ void SetNumber(byte arr[][2], byte Size, byte M)
 void SetBrightness()
 { // Set the Brightness of the Display depending on the ldr readings / if the value drops below a definde value the display is turned off
   int ldrStatus = analogRead(ldrPin);
- // Serial.println(ldrStatus);
-  if (ldrStatus <= MinLight && millis() - lastLightOnMillis >= TurnOffDelay)
+  Serial.println(ldrStatus);
+  if (ldrStatus <= MinLight)
   {
-    Matrix.clear();
-    Matrix.show();
-    Status = false;
-    Mode = 1;
+    if (millis() - lastLightOnMillis >= TurnOffDelay) {
+      Matrix.clear();
+      Matrix.show();
+      Status = false;
+      Mode = 1;
+    }
   }
   else
   {
