@@ -26,7 +26,7 @@ const int Breite = 16;          // Width (in px)
 const bool invert = false;       // Set depending on the wiring
 const bool flipAxis[3] = {false, false, true};
 const bool rightstart = false;   // Check when the start is on the right side
-const byte rotateAdj = 0;       // Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
+const byte rotateAdj = 2;       // Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
 const int MaxLight = 600;       // Ldr Value when enviroment Light is maximum
 const int MinLight = 60;       // Ldr Value when Light is off
 const byte MaxBrightness = 200; // Max Brightness of the Display
@@ -255,6 +255,8 @@ void loop()
 
 void CheckMotionSensor()
 {
+  Serial.print("MotionSensor");
+  Serial.print(digitalRead(motionSensorPin));
   if (digitalRead(motionSensorPin))
   {
     Mode = DefaultMode;
@@ -438,6 +440,7 @@ void SetNumber(byte arr[][2], byte Size, byte M)
 void SetBrightness()
 { // Set the Brightness of the Display depending on the ldr readings / if the value drops below a definde value the display is turned off
   int ldrStatus = analogRead(ldrPin);
+  Serial.print("Lightlevel: ");
   Serial.println(ldrStatus);
   if (ldrStatus <= MinLight)
   {
