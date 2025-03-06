@@ -31,7 +31,7 @@ const int MaxLight = 600;       // Ldr Value when enviroment Light is maximum
 const int MinLight = 60;       // Ldr Value when Light is off
 const byte MaxBrightness = 200; // Max Brightness of the Display
 const byte MinBrightness = 70; // Min Brightness of the Display
-const int TurnOffDelay = 60000; //Delay until the matrix switches off when light level falls under min Brightness
+const int TurnOffDelay = 20000; //Delay until the matrix switches off when light level falls under min Brightness
 byte Mode = 1;                  // 0 = Clock / 1 = Numbers / 2 = off
 
 /////////////////Audio Settings///////////////////////
@@ -438,7 +438,7 @@ void SetNumber(byte arr[][2], byte Size, byte M)
 void SetBrightness()
 { // Set the Brightness of the Display depending on the ldr readings / if the value drops below a definde value the display is turned off
   int ldrStatus = analogRead(ldrPin);
-  Serial.println(ldrStatus);
+  //Serial.println(ldrStatus);
   if (ldrStatus <= MinLight)
   {
     if (millis() - lastLightOnMillis >= TurnOffDelay) {
