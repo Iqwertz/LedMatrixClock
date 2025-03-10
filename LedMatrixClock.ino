@@ -28,7 +28,7 @@ const bool flipAxis[3] = {false, false, true};
 const bool rightstart = false;   // Check when the start is on the right side
 const byte rotateAdj = 2;       // Rotates Display / 0  = 0° / 1 = 90° / 2=180° / 3 = 270°
 const int MaxLight = 600;       // Ldr Value when enviroment Light is maximum
-const int MinLight = 60;       // Ldr Value when Light is off
+const int MinLight = 40;       // Ldr Value when Light is off
 const byte LightSamples = 20;    // Amount of light samples to take for measurement
 const byte MaxBrightness = 200; // Max Brightness of the Display
 const byte MinBrightness = 70; // Min Brightness of the Display
